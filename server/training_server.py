@@ -6,14 +6,13 @@ import os
 
 # Handle both script and PyInstaller execution
 if getattr(sys, 'frozen', False):
-    # Running as compiled executable
-    application_path = sys._MEIPASS
+    base_path = sys._MEIPASS
 else:
-    # Running as script
-    application_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-sys.path.insert(0, application_path)
-sys.path.insert(0, os.path.join(application_path, 'generated'))
+generated_path = os.path.join(base_path, 'generated')
+sys.path.insert(0, base_path)
+sys.path.insert(0, generated_path)
 
 import training_service_pb2
 import training_service_pb2_grpc
@@ -21,6 +20,13 @@ import health_check_pb2
 import health_check_pb2_grpc
 import image_batch_pb2
 import training_metric_pb2
+
+# Import mock trainer
+if getattr(sys, 'frozen', False):
+    import mock_trainer
+else:
+    from server import mock_trainer
+
 
 class HealthCheckService(health_check_pb2_grpc.HealthCheckServicer):
     """Implements fault tolerance and connection management"""
@@ -86,6 +92,7 @@ class HealthCheckService(health_check_pb2_grpc.HealthCheckServicer):
             status_message="Connected" if client_id in self.connected_clients else "Disconnected"
         )
 
+
 class TrainingDashboardService(training_service_pb2_grpc.TrainingDashboardServicer):
     """Streams training data to dashboard clients"""
     
@@ -93,11 +100,44 @@ class TrainingDashboardService(training_service_pb2_grpc.TrainingDashboardServic
         self.trainer = trainer
         self.current_step = 0
     
+    def StartTraining(self, request, context):
+        """Handle start training request"""
+        print(f"Received start training request from client: {request.client_id}")
+        success = self.trainer.start_training()
+        return training_service_pb2.TrainingControlResponse(
+            success=success,
+            message="Training started" if success else "Failed to start training",
+            is_training=self.trainer.is_training,
+            current_step=self.trainer.current_step
+        )
+    
+    def StopTraining(self, request, context):
+        """Handle stop training request"""
+        print(f"Received stop training request from client: {request.client_id}")
+        success = self.trainer.pause_training()
+        return training_service_pb2.TrainingControlResponse(
+            success=success,
+            message="Training stopped" if success else "Failed to stop training",
+            is_training=self.trainer.is_training,
+            current_step=self.trainer.current_step
+        )
+    
+    def GetTrainingStatus(self, request, context):
+        """Get current training status"""
+        metrics = self.trainer.get_current_metrics()
+        return training_service_pb2.TrainingStatusResponse(
+            is_training=self.trainer.is_training,
+            current_step=self.trainer.current_step,
+            max_steps=self.trainer.max_steps,
+            current_loss=metrics['loss'],
+            current_accuracy=metrics['accuracy']
+        )
+    
     def StreamMetrics(self, request, context):
         """Stream training metrics (loss, accuracy)"""
         update_interval = request.update_interval
         
-        while self.trainer.is_training:
+        while True:
             if self.current_step < self.trainer.current_step:
                 self.current_step = self.trainer.current_step
                 
@@ -118,7 +158,7 @@ class TrainingDashboardService(training_service_pb2_grpc.TrainingDashboardServic
         
         self.current_step = start_step
         
-        while self.trainer.is_training:
+        while True:
             if self.current_step < self.trainer.current_step:
                 self.current_step = self.trainer.current_step
                 
@@ -159,6 +199,7 @@ class TrainingDashboardService(training_service_pb2_grpc.TrainingDashboardServic
             message="Status received"
         )
 
+
 def serve(trainer, port=50051):
     """Start the gRPC server"""
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
@@ -174,14 +215,17 @@ def serve(trainer, port=50051):
     server.add_insecure_port(f'[::]:{port}')
     server.start()
     print(f"Server started on port {port}")
+    print("Waiting for client to send start command...")
     
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:
+        print("\nShutting down server...")
+        trainer.stop_training()
         server.stop(0)
 
+
 if __name__ == '__main__':
-    from mock_trainer import MockTrainer
-    trainer = MockTrainer()
-    trainer.start_training()
+    trainer = mock_trainer.MockTrainer()
+    # Don't start training automatically - wait for client command
     serve(trainer)

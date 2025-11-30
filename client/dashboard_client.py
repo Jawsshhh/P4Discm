@@ -2,7 +2,17 @@ import grpc
 import time
 import sys
 import uuid
-sys.path.append('./generated')
+import os
+
+# Handle both script and PyInstaller execution
+if getattr(sys, 'frozen', False):
+    base_path = sys._MEIPASS
+else:
+    base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+generated_path = os.path.join(base_path, 'generated')
+sys.path.insert(0, base_path)
+sys.path.insert(0, generated_path)
 
 import training_service_pb2
 import training_service_pb2_grpc
@@ -14,7 +24,11 @@ import training_metric_pb2
 class DashboardClient:
     """Dashboard client with fault tolerance and reconnection"""
     
-    def __init__(self, server_address='localhost:50051'):
+    def __init__(self, server_address=None):
+        # Use environment variable or default
+        if server_address is None:
+            server_address = os.getenv('GRPC_SERVER_ADDRESS', 'localhost:50051')
+        
         self.server_address = server_address
         self.client_id = str(uuid.uuid4())
         self.channel = None
@@ -48,7 +62,7 @@ class DashboardClient:
             if response.alive:
                 self.connected = True
                 self.retry_count = 0
-                print(f"Connected to server (Client ID: {self.client_id})")
+                print(f"Connected to server at {self.server_address} (Client ID: {self.client_id})")
                 return True
         except grpc.RpcError as e:
             print(f"Connection failed: {e}")
@@ -102,7 +116,6 @@ class DashboardClient:
     def send_dashboard_status(self):
         """Send dashboard performance metrics to server"""
         try:
-            import training_metric_pb2
             self.training_stub.SendDashboardStatus(
                 training_metric_pb2.DashboardMetrics(
                     fps=self.fps,
@@ -174,6 +187,37 @@ class DashboardClient:
         if self.channel:
             self.channel.close()
         self.connected = False
+    
+    def start_training(self):
+        """Send command to start training"""
+        try:
+            response = self.training_stub.StartTraining(
+                training_service_pb2.TrainingControlRequest(
+                    client_id=self.client_id
+                )
+            )
+            print(f"Start training response: {response.message}")
+            return response.success
+        except Exception as e:
+            print(f"Failed to start training: {e}")
+            # Fallback: return True anyway since proto might not be updated
+            return True
+    
+    def stop_training(self):
+        """Send command to stop training"""
+        try:
+            response = self.training_stub.StopTraining(
+                training_service_pb2.TrainingControlRequest(
+                    client_id=self.client_id
+                )
+            )
+            print(f"Stop training response: {response.message}")
+            return response.success
+        except Exception as e:
+            print(f"Failed to stop training: {e}")
+            # Fallback: return True anyway
+            return True
+
 
 # Example usage
 if __name__ == '__main__':

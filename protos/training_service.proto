@@ -13,6 +13,13 @@ service TrainingDashboard {
   rpc SendDashboardStatus(DashboardMetrics) returns (StatusAck);
   
   rpc LiveTrainingStream(stream TrainingUpdate) returns (stream DashboardResponse);
+  
+  // New control RPCs
+  rpc StartTraining(TrainingControlRequest) returns (TrainingControlResponse);
+  
+  rpc StopTraining(TrainingControlRequest) returns (TrainingControlResponse);
+  
+  rpc GetTrainingStatus(TrainingStatusRequest) returns (TrainingStatusResponse);
 }
 
 message TrainingUpdate {
@@ -40,4 +47,28 @@ message DashboardResponse {
 message StatusAck {
   bool success = 1;
   string message = 2;
+}
+
+// New control messages
+message TrainingControlRequest {
+  string client_id = 1;
+}
+
+message TrainingControlResponse {
+  bool success = 1;
+  string message = 2;
+  bool is_training = 3;
+  uint32 current_step = 4;
+}
+
+message TrainingStatusRequest {
+  string client_id = 1;
+}
+
+message TrainingStatusResponse {
+  bool is_training = 1;
+  uint32 current_step = 2;
+  uint32 max_steps = 3;
+  float current_loss = 4;
+  float current_accuracy = 5;
 }

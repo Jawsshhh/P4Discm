@@ -1,0 +1,49 @@
+# ============================================
+# docker-compose.yml
+# Complete Docker setup for the dashboard
+# ============================================
+
+version: '3.8'
+
+services:
+  # Training Server (gRPC)
+  training-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: training-server
+    ports:
+      - "50051:50051"
+    networks:
+      - dashboard-net
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "python", "-c", "import grpc; channel = grpc.insecure_channel('localhost:50051'); channel.close()"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    environment:
+      - PYTHONUNBUFFERED=1
+
+  # Web Dashboard (Flask)
+  web-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+    container_name: web-dashboard
+    ports:
+      - "5000:5000"
+    networks:
+      - dashboard-net
+    depends_on:
+      training-server:
+        condition: service_healthy
+    restart: unless-stopped
+    environment:
+      - GRPC_SERVER_ADDRESS=training-server:50051
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+
+networks:
+  dashboard-net:
+    driver: bridge

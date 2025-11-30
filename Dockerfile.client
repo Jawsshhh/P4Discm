@@ -1,0 +1,44 @@
+# ============================================
+# Dockerfile.client
+# Docker image for the Web Dashboard
+# ============================================
+
+FROM python:3.12-slim
+
+# Set working directory
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    g++ \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy requirements and install Python dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt gunicorn
+
+# Copy proto files and generate Python code (needed for imports)
+# Copy proto files and generate Python code (needed for imports)
+COPY protos/ ./protos/
+RUN mkdir -p ./generated && \
+    python -m grpc_tools.protoc \
+    -I./protos \
+    --python_out=./generated \
+    --grpc_python_out=./generated \
+    ./protos/health_check.proto \
+    ./protos/image_batch.proto \
+    ./protos/training_metric.proto \
+    ./protos/training_service.proto && \
+    touch ./generated/__init__.py
+
+# Copy application code
+COPY client/ ./client/
+COPY templates/ ./templates/
+COPY generated/ ./generated/
+
+# Expose Flask port
+EXPOSE 5000
+
+# Use gunicorn for production
+CMD ["gunicorn", "--bind", "0.0.0.0:5000", "--workers", "1", "--threads", "4", "--timeout", "120", "client.web_dashboard:app"]

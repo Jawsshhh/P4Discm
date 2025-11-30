@@ -3,15 +3,13 @@ import threading
 import time
 from PIL import Image
 import io
-import torch
-import torchvision
-import torchvision.transforms as transforms
 
 class MockTrainer:
-    """Simulates ML training with real CIFAR-10 images"""
+    """Simulates ML training for testing the dashboard"""
     
-    def __init__(self, use_real_data=True):
+    def __init__(self):
         self.is_training = False
+        self.is_running = False  # Controls the thread
         self.current_step = 0
         self.batch_size = 16
         self.max_steps = 1000
@@ -20,90 +18,39 @@ class MockTrainer:
         self.current_batch = None
         self.current_metrics = {'loss': 2.3, 'accuracy': 0.1}
         
-        # CIFAR-10 class names
-        self.classes = ['airplane', 'automobile', 'bird', 'cat', 'deer', 
-                       'dog', 'frog', 'horse', 'ship', 'truck']
+        # Class names for image classification
+        self.classes = ['cat', 'dog', 'bird', 'fish', 'horse', 'deer', 'frog', 'ship', 'car', 'plane']
         
-        # Load CIFAR-10 dataset
-        self.use_real_data = use_real_data
-        if use_real_data:
-            print("Loading CIFAR-10 dataset...")
-            self.load_cifar10()
-            print(f"Loaded {len(self.dataset)} training images")
-        else:
-            self.dataset = None
-    
-    def load_cifar10(self):
-        """Load CIFAR-10 dataset"""
-        # Download and load CIFAR-10
-        transform = transforms.Compose([
-            transforms.ToTensor(),
-        ])
-        
-        self.dataset = torchvision.datasets.CIFAR10(
-            root='./data', 
-            train=True, 
-            download=True, 
-            transform=transform
-        )
-        
-        # Create dataloader
-        self.dataloader = torch.utils.data.DataLoader(
-            self.dataset,
-            batch_size=self.batch_size,
-            shuffle=True,
-            num_workers=0  # 0 for Windows compatibility
-        )
-        
-        # Create iterator
-        self.data_iter = iter(self.dataloader)
-    
-    def get_next_batch(self):
-        """Get next batch from CIFAR-10"""
-        try:
-            images, labels = next(self.data_iter)
-        except StopIteration:
-            # Restart iterator when dataset ends
-            self.data_iter = iter(self.dataloader)
-            images, labels = next(self.data_iter)
-        
-        return images, labels
-    
-    def tensor_to_bytes(self, img_tensor):
-        """Convert PyTorch tensor to bytes for gRPC"""
-        # img_tensor shape: [C, H, W], values in [0, 1]
-        img_np = img_tensor.permute(1, 2, 0).numpy()  # [H, W, C]
-        img_np = (img_np * 255).astype(np.uint8)  # Convert to [0, 255]
-        
-        # Convert to PIL Image
-        pil_img = Image.fromarray(img_np, 'RGB')
-        
-        # Convert to bytes
-        img_bytes = io.BytesIO()
-        pil_img.save(img_bytes, format='PNG')
-        
-        return {
-            'pixels': img_bytes.getvalue(),
-            'width': 32,
-            'height': 32
-        }
+        # Training thread
+        self.training_thread = None
     
     def generate_fake_image(self, label_idx):
-        """Generate a random colored image (fallback)"""
-        img = np.random.randint(0, 255, (32, 32, 3), dtype=np.uint8)
+        """Generate a random colored image"""
+        # Create a 64x64 image with random colors
+        img = np.random.randint(0, 255, (64, 64, 3), dtype=np.uint8)
+        
+        # Convert to bytes
         pil_img = Image.fromarray(img, 'RGB')
         img_bytes = io.BytesIO()
         pil_img.save(img_bytes, format='PNG')
         
         return {
             'pixels': img_bytes.getvalue(),
-            'width': 32,
-            'height': 32
+            'width': 64,
+            'height': 64
         }
     
     def training_loop(self):
-        """Simulated training loop with real data"""
-        while self.is_training and self.current_step < self.max_steps:
+        """Simulated training loop that can be paused"""
+        self.is_running = True
+        
+        while self.is_running and self.current_step < self.max_steps:
+            # Check if training is active
+            if not self.is_training:
+                time.sleep(0.5)  # Wait while paused
+                continue
+            
+            # Simulate training step
             time.sleep(0.1)  # 100ms per step
             
             self.current_step += 1
@@ -114,67 +61,72 @@ class MockTrainer:
             
             # Generate batch
             images = []
-            labels_list = []
+            labels = []
             predictions = []
             confidences = []
             
-            if self.use_real_data:
-                # Use real CIFAR-10 data
-                img_batch, label_batch = self.get_next_batch()
+            for i in range(self.batch_size):
+                true_label_idx = np.random.randint(0, len(self.classes))
                 
-                for i in range(min(self.batch_size, len(img_batch))):
-                    true_label_idx = label_batch[i].item()
-                    
-                    # Simulate prediction (correct with increasing probability)
-                    if np.random.random() < self.current_metrics['accuracy']:
-                        pred_label_idx = true_label_idx
-                        confidence = np.random.uniform(0.7, 0.99)
-                    else:
-                        pred_label_idx = np.random.randint(0, len(self.classes))
-                        confidence = np.random.uniform(0.4, 0.7)
-                    
-                    images.append(self.tensor_to_bytes(img_batch[i]))
-                    labels_list.append(self.classes[true_label_idx])
-                    predictions.append(self.classes[pred_label_idx])
-                    confidences.append(confidence)
-            else:
-                # Use fake data
-                for i in range(self.batch_size):
-                    true_label_idx = np.random.randint(0, len(self.classes))
-                    
-                    if np.random.random() < self.current_metrics['accuracy']:
-                        pred_label_idx = true_label_idx
-                        confidence = np.random.uniform(0.7, 0.99)
-                    else:
-                        pred_label_idx = np.random.randint(0, len(self.classes))
-                        confidence = np.random.uniform(0.4, 0.7)
-                    
-                    images.append(self.generate_fake_image(true_label_idx))
-                    labels_list.append(self.classes[true_label_idx])
-                    predictions.append(self.classes[pred_label_idx])
-                    confidences.append(confidence)
+                # Prediction is correct with increasing probability
+                if np.random.random() < self.current_metrics['accuracy']:
+                    pred_label_idx = true_label_idx
+                    confidence = np.random.uniform(0.7, 0.99)
+                else:
+                    pred_label_idx = np.random.randint(0, len(self.classes))
+                    confidence = np.random.uniform(0.4, 0.7)
+                
+                images.append(self.generate_fake_image(true_label_idx))
+                labels.append(self.classes[true_label_idx])
+                predictions.append(self.classes[pred_label_idx])
+                confidences.append(confidence)
             
             self.current_batch = {
                 'images': images,
-                'labels': labels_list,
+                'labels': labels,
                 'predictions': predictions,
                 'confidences': confidences
             }
             
             if self.current_step % 10 == 0:
-                print(f"Step {self.current_step}: Loss={self.current_metrics['loss']:.4f}, Acc={self.current_metrics['accuracy']:.4f}")
+                status = "TRAINING" if self.is_training else "PAUSED"
+                print(f"[{status}] Step {self.current_step}: Loss={self.current_metrics['loss']:.4f}, Acc={self.current_metrics['accuracy']:.4f}")
     
     def start_training(self):
-        """Start the training thread"""
-        self.is_training = True
-        self.training_thread = threading.Thread(target=self.training_loop)
-        self.training_thread.start()
+        """Start or resume training"""
+        if not self.is_running:
+            # Start the training thread if not running
+            self.is_training = True
+            self.training_thread = threading.Thread(target=self.training_loop)
+            self.training_thread.start()
+            print("Training started!")
+        else:
+            # Resume training
+            self.is_training = True
+            print("Training resumed!")
+        return True
+    
+    def pause_training(self):
+        """Pause training without stopping the thread"""
+        self.is_training = False
+        print("Training paused!")
+        return True
     
     def stop_training(self):
-        """Stop training"""
+        """Stop training completely"""
         self.is_training = False
-        if hasattr(self, 'training_thread'):
-            self.training_thread.join()
+        self.is_running = False
+        if hasattr(self, 'training_thread') and self.training_thread:
+            self.training_thread.join(timeout=2)
+        print("Training stopped!")
+        return True
+    
+    def reset_training(self):
+        """Reset training to step 0"""
+        self.stop_training()
+        self.current_step = 0
+        self.current_metrics = {'loss': 2.3, 'accuracy': 0.1}
+        print("Training reset!")
     
     def get_current_batch(self):
         """Get current batch data"""

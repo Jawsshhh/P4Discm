@@ -1,0 +1,23 @@
+# Don't copy these files into Docker image
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
+*.spec
+venv/
+env/
+.env
+.git/
+.gitignore
+.vscode/
+.idea/
+*.md
+README.md
+.DS_Store
+Thumbs.db

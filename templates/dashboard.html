@@ -39,9 +39,56 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.3);
         }
 
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
         .header h1 {
             font-size: 24px;
             font-weight: 600;
+        }
+
+        .control-button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-button.start {
+            background: #22c55e;
+            color: white;
+        }
+
+        .control-button.start:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .control-button.stop {
+            background: #ef4444;
+            color: white;
+        }
+
+        .control-button.stop:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .control-button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
         }
 
         .status-bar {
@@ -187,7 +234,12 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🤖 Training Dashboard</h1>
+            <div class="header-content">
+                <h1>🤖 Training Dashboard</h1>
+                <button id="controlButton" class="control-button start" onclick="toggleTraining()">
+                    ▶️ Start Training
+                </button>
+            </div>
             <div class="status-bar">
                 <div class="status-item">
                     <div class="status-dot" id="connectionDot"></div>
@@ -229,6 +281,42 @@
     </div>
 
     <script>
+        let isTrainingActive = false;
+
+        // Toggle training on/off
+        async function toggleTraining() {
+            const button = document.getElementById('controlButton');
+            
+            try {
+                if (isTrainingActive) {
+                    // Stop training
+                    const response = await fetch('/api/control/stop', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        isTrainingActive = false;
+                        button.textContent = '▶️ Start Training';
+                        button.className = 'control-button start';
+                        console.log('Training stopped');
+                    }
+                } else {
+                    // Start training
+                    const response = await fetch('/api/control/start', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        isTrainingActive = true;
+                        button.textContent = '⏸️ Stop Training';
+                        button.className = 'control-button stop';
+                        console.log('Training started');
+                    }
+                }
+            } catch (error) {
+                console.error('Control error:', error);
+                alert('Failed to control training. Make sure server is connected.');
+            }
+        }
+
         // Chart.js configurations
         const chartOptions = {
             responsive: true,
@@ -320,6 +408,17 @@
                 document.getElementById('fpsValue').textContent = data.fps.toFixed(1);
                 document.getElementById('latencyValue').textContent = 
                     data.latency_ms.toFixed(0) + 'ms';
+                
+                // Update button state based on training status
+                isTrainingActive = data.is_training || false;
+                const button = document.getElementById('controlButton');
+                if (isTrainingActive) {
+                    button.textContent = '⏸️ Stop Training';
+                    button.className = 'control-button stop';
+                } else {
+                    button.textContent = '▶️ Start Training';
+                    button.className = 'control-button start';
+                }
             } catch (error) {
                 console.error('Status update error:', error);
             }
@@ -416,3 +515,17 @@
 </html>
 ```
 
+Save this as `templates/dashboard.html`, then:
+
+1. **Hard refresh the browser** with `Ctrl+F5`
+2. **Open browser console** (F12)
+3. **Click the button**
+
+You should now see in the Flask terminal:
+```
+127.0.0.1 - - [30/Nov/2025 21:XX:XX] "POST /api/control/start HTTP/1.1" 200 -
+```
+
+And in the browser console:
+```
+Training started

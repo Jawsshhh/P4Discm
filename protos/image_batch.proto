@@ -1,0 +1,24 @@
+syntax = "proto3";
+
+package dashboard;
+
+message Image {
+  bytes pixel_data = 1;        
+  uint32 width = 2;            
+  uint32 height = 3;           
+  string format = 4;           
+}
+
+message LabeledImage {
+  Image image = 1;             
+  string ground_truth = 2;     
+  string prediction = 3;       
+  float confidence = 4;        
+}
+
+// A batch of images sent during training
+message ImageBatch {
+  uint32 step = 1;                      
+  repeated LabeledImage images = 2;      
+  uint64 timestamp_ms = 3;              
+}

@@ -1,0 +1,54 @@
+# ================================
+# Python cache / artifacts
+# ================================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ================================
+# Virtual environment (DO NOT COMMIT)
+# ================================
+venv/
+.venv/
+env/
+ENV/
+venv_torch/
+.venv_torch/
+
+
+# ================================
+# Build artifacts (PyInstaller)
+# ================================
+build/
+dist/
+*.exe
+*.dll
+*.so
+
+# ================================
+# PyInstaller temp files
+# ================================
+*.log
+*.spec~
+
+# ================================
+# Generated gRPC / Protobuf files
+# (Generated, reproducible)
+# ================================
+generated/*_pb2.py
+generated/*_pb2_grpc.py
+
+# ================================
+# OS / Editor junk
+# ================================
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ================================
+# Misc
+# ================================
+*.tmp
+*.bak

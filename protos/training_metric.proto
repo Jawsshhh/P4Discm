@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package dashboard;
+
+// Training statistics sent periodically
+message TrainingMetrics {
+  uint32 step = 1;             
+  float loss = 2;             
+  float accuracy = 3;          
+  uint64 timestamp_ms = 4;     
+}
+
+message DashboardMetrics {
+  float fps = 1;               
+  float latency_ms = 2;        
+  uint32 frames_rendered = 3;  
+}

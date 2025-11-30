@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+package dashboard;
+
+import "image_batch.proto";
+import "training_metric.proto";
+
+service TrainingDashboard {
+  rpc StreamImages(ImageBatchRequest) returns (stream ImageBatch);
+  
+  rpc StreamMetrics(MetricsRequest) returns (stream TrainingMetrics);
+  
+  rpc SendDashboardStatus(DashboardMetrics) returns (StatusAck);
+  
+  rpc LiveTrainingStream(stream TrainingUpdate) returns (stream DashboardResponse);
+}
+
+message TrainingUpdate {
+  uint32 step = 1;
+  TrainingMetrics metrics = 2;
+  ImageBatch batch = 3;
+  string status = 4;
+}
+
+message ImageBatchRequest {
+  uint32 batch_size = 1;       
+  uint32 start_step = 2;       
+}
+
+message MetricsRequest {
+  uint32 update_interval = 1;  
+}
+
+message DashboardResponse {
+  bool ready = 1;              
+  uint32 last_received_step = 2; 
+  string status = 3;
+}
+
+message StatusAck {
+  bool success = 1;
+  string message = 2;
+}

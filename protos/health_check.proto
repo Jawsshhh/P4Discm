@@ -1,0 +1,70 @@
+syntax = "proto3";
+
+package dashboard;
+
+// Service for health checks and fault tolerance
+service HealthCheck {
+  rpc Ping(PingRequest) returns (PingResponse);
+  
+  rpc Reconnect(ReconnectRequest) returns (ReconnectResponse);
+  
+  rpc Disconnect(DisconnectRequest) returns (DisconnectResponse);
+  
+  rpc GetConnectionStatus(StatusRequest) returns (ConnectionStatus);
+}
+
+message PingRequest {
+  uint64 timestamp_ms = 1;
+  string client_id = 2;  }
+
+message PingResponse {
+  bool alive = 1;
+  uint64 timestamp_ms = 2;
+  uint32 retry_count = 3;  
+  uint32 max_retries = 4;  }
+
+message ReconnectRequest {
+  uint32 last_known_step = 1;
+  string client_id = 2;           
+  uint32 attempt_number = 3;      
+}
+
+message ReconnectResponse {
+  bool success = 1;
+  uint32 resume_step = 2;
+  string message = 3;
+  uint32 attempts_remaining = 4;  
+  uint32 retry_after_ms = 5;      
+  ReconnectStatus status = 6;
+}
+
+enum ReconnectStatus {
+  SUCCESS = 0;                    
+  RETRY_ALLOWED = 1;              
+  MAX_RETRIES_EXCEEDED = 2;       
+  SERVER_UNAVAILABLE = 3;         
+  INVALID_STATE = 4;              // Cannot resume from requested step
+}
+
+message DisconnectRequest {
+  string client_id = 1;
+  string reason = 2;              // Why client is disconnecting
+}
+
+message DisconnectResponse {
+  bool acknowledged = 1;
+  string message = 2;
+}
+
+message StatusRequest {
+  string client_id = 1;
+}
+
+message ConnectionStatus {
+  bool is_connected = 1;
+  uint32 failed_attempts = 2;     
+  uint32 max_allowed_attempts = 3; 
+  uint64 connected_since_ms = 4;  
+  uint64 last_failure_ms = 5;     
+  string status_message = 6;
+}

@@ -20,9 +20,8 @@ a = Analysis(
         'flask_cors',
     ],
     excludes=[
-        'matplotlib',                
-        'numpy.random._pickle',
-        'scipy',                    
+        'matplotlib',                # ✅ prevent NumPy ABI crash
+        'scipy',                     # safe if unused
     ],
     hookspath=[],
     hooksconfig={},

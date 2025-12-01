@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Image Classifier Training Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            grid-template-rows: auto 1fr;
+            height: 100vh;
+            gap: 10px;
+            padding: 10px;
+        }
+
+        .header {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 15px 25px;
+            border-radius: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .control-button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .control-button.start {
+            background: #22c55e;
+            color: white;
+        }
+
+        .control-button.start:hover {
+            background: #16a34a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(34, 197, 94, 0.4);
+        }
+
+        .control-button.stop {
+            background: #ef4444;
+            color: white;
+        }
+
+        .control-button.stop:hover {
+            background: #dc2626;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        }
+
+        .control-button:disabled {
+            background: #6b7280;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .status-bar {
+            display: flex;
+            gap: 25px;
+            font-size: 14px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: #22c55e;
+            box-shadow: 0 0 10px #22c55e;
+            animation: pulse 2s infinite;
+        }
+
+        .status-dot.disconnected {
+            background: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .images-section {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .section-title {
+            font-size: 18px;
+            margin-bottom: 15px;
+            color: #a855f7;
+            font-weight: 600;
+        }
+
+        .image-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+        }
+
+        .image-tile {
+            background: #1a1a1a;
+            border-radius: 6px;
+            padding: 8px;
+            border: 2px solid #3a3a3a;
+            transition: all 0.3s;
+        }
+
+        .image-tile:hover {
+            border-color: #667eea;
+            transform: scale(1.05);
+        }
+
+        .image-tile img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+            image-rendering: pixelated;
+        }
+
+        .image-info {
+            margin-top: 6px;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+
+        .label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 2px;
+        }
+
+        .correct {
+            color: #22c55e;
+        }
+
+        .incorrect {
+            color: #ef4444;
+        }
+
+        .confidence {
+            color: #94a3b8;
+        }
+
+        .charts-section {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .chart-container {
+            background: #2a2a2a;
+            border-radius: 8px;
+            padding: 20px;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .chart-wrapper {
+            flex: 1;
+            position: relative;
+        }
+
+        .no-data {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: #666;
+            font-style: italic;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-content">
+                <h1>🤖 Training Dashboard</h1>
+                <button id="controlButton" class="control-button start" onclick="toggleTraining()">
+                    ▶️ Start Training
+                </button>
+            </div>
+            <div class="status-bar">
+                <div class="status-item">
+                    <div class="status-dot" id="connectionDot"></div>
+                    <span id="connectionStatus">Connecting...</span>
+                </div>
+                <div class="status-item">
+                    <strong>Step:</strong> <span id="stepCount">0</span>
+                </div>
+                <div class="status-item">
+                    <strong>FPS:</strong> <span id="fpsValue">0</span>
+                </div>
+                <div class="status-item">
+                    <strong>Latency:</strong> <span id="latencyValue">0ms</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="images-section">
+            <h2 class="section-title">📸 Image Batch (Prediction vs Ground Truth)</h2>
+            <div class="image-grid" id="imageGrid">
+                <div class="no-data">Waiting for training data...</div>
+            </div>
+        </div>
+
+        <div class="charts-section">
+            <div class="chart-container">
+                <h2 class="section-title">📉 Training Loss</h2>
+                <div class="chart-wrapper">
+                    <canvas id="lossChart"></canvas>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h2 class="section-title">📈 Accuracy</h2>
+                <div class="chart-wrapper">
+                    <canvas id="accuracyChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let isTrainingActive = false;
+
+        // Toggle training on/off
+        async function toggleTraining() {
+            const button = document.getElementById('controlButton');
+            
+            try {
+                if (isTrainingActive) {
+                    // Stop training
+                    const response = await fetch('/api/control/stop', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        isTrainingActive = false;
+                        button.textContent = '▶️ Start Training';
+                        button.className = 'control-button start';
+                        console.log('Training stopped');
+                    }
+                } else {
+                    // Start training
+                    const response = await fetch('/api/control/start', { method: 'POST' });
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        isTrainingActive = true;
+                        button.textContent = '⏸️ Stop Training';
+                        button.className = 'control-button stop';
+                        console.log('Training started');
+                    }
+                }
+            } catch (error) {
+                console.error('Control error:', error);
+                alert('Failed to control training. Make sure server is connected.');
+            }
+        }
+
+        // Chart.js configurations
+        const chartOptions = {
+            responsive: true,
+            maintainAspectRatio: false,
+            animation: {
+                duration: 0
+            },
+            plugins: {
+                legend: {
+                    display: false
+                }
+            },
+            scales: {
+                x: {
+                    grid: {
+                        color: '#3a3a3a'
+                    },
+                    ticks: {
+                        color: '#94a3b8'
+                    }
+                },
+                y: {
+                    grid: {
+                        color: '#3a3a3a'
+                    },
+                    ticks: {
+                        color: '#94a3b8'
+                    }
+                }
+            }
+        };
+
+        // Initialize charts
+        const lossChart = new Chart(document.getElementById('lossChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Loss',
+                    data: [],
+                    borderColor: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: chartOptions
+        });
+
+        const accuracyChart = new Chart(document.getElementById('accuracyChart'), {
+            type: 'line',
+            data: {
+                labels: [],
+                datasets: [{
+                    label: 'Accuracy',
+                    data: [],
+                    borderColor: '#22c55e',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                ...chartOptions,
+                scales: {
+                    ...chartOptions.scales,
+                    y: {
+                        ...chartOptions.scales.y,
+                        min: 0,
+                        max: 1
+                    }
+                }
+            }
+        });
+
+        // Update status
+        async function updateStatus() {
+            try {
+                const response = await fetch('/api/status');
+                const data = await response.json();
+                
+                document.getElementById('connectionStatus').textContent = 
+                    data.connected ? 'Connected' : 'Disconnected';
+                document.getElementById('connectionDot').className = 
+                    'status-dot ' + (data.connected ? '' : 'disconnected');
+                document.getElementById('stepCount').textContent = data.current_step;
+                document.getElementById('fpsValue').textContent = data.fps.toFixed(1);
+                document.getElementById('latencyValue').textContent = 
+                    data.latency_ms.toFixed(0) + 'ms';
+                
+                // Update button state based on training status
+                isTrainingActive = data.is_training || false;
+                const button = document.getElementById('controlButton');
+                if (isTrainingActive) {
+                    button.textContent = '⏸️ Stop Training';
+                    button.className = 'control-button stop';
+                } else {
+                    button.textContent = '▶️ Start Training';
+                    button.className = 'control-button start';
+                }
+            } catch (error) {
+                console.error('Status update error:', error);
+            }
+        }
+
+        // Update metrics charts
+        async function updateMetrics() {
+            try {
+                const response = await fetch('/api/metrics');
+                const metrics = await response.json();
+                
+                if (metrics.length > 0) {
+                    const steps = metrics.map(m => m.step);
+                    const losses = metrics.map(m => m.loss);
+                    const accuracies = metrics.map(m => m.accuracy);
+                    
+                    lossChart.data.labels = steps;
+                    lossChart.data.datasets[0].data = losses;
+                    lossChart.update('none');
+                    
+                    accuracyChart.data.labels = steps;
+                    accuracyChart.data.datasets[0].data = accuracies;
+                    accuracyChart.update('none');
+                }
+            } catch (error) {
+                console.error('Metrics update error:', error);
+            }
+        }
+
+        // Update images
+        async function updateImages() {
+            try {
+                const response = await fetch('/api/images');
+                const images = await response.json();
+                
+                if (images.length > 0) {
+                    const grid = document.getElementById('imageGrid');
+                    grid.innerHTML = '';
+                    
+                    images.forEach(img => {
+                        const tile = document.createElement('div');
+                        tile.className = 'image-tile';
+                        
+                        const isCorrect = img.prediction === img.ground_truth;
+                        const statusClass = isCorrect ? 'correct' : 'incorrect';
+                        
+                        tile.innerHTML = `
+                            <img src="data:image/png;base64,${img.data}" 
+                                 alt="${img.ground_truth}"
+                                 width="${img.width}" 
+                                 height="${img.height}">
+                            <div class="image-info">
+                                <div class="label">
+                                    <span>True:</span>
+                                    <span>${img.ground_truth}</span>
+                                </div>
+                                <div class="label">
+                                    <span>Pred:</span>
+                                    <span class="${statusClass}">${img.prediction}</span>
+                                </div>
+                                <div class="confidence">
+                                    Conf: ${(img.confidence * 100).toFixed(1)}%
+                                </div>
+                            </div>
+                        `;
+                        
+                        grid.appendChild(tile);
+                    });
+                }
+            } catch (error) {
+                console.error('Images update error:', error);
+            }
+        }
+
+        // Main update loop
+        function startUpdates() {
+            // Update status frequently
+            updateStatus();
+            setInterval(updateStatus, 500);
+            
+            // Update metrics moderately
+            updateMetrics();
+            setInterval(updateMetrics, 1000);
+            
+            // Update images at target frame rate
+            updateImages();
+            setInterval(updateImages, 16); // ~60 FPS
+        }
+
+        // Start when page loads
+        window.addEventListener('load', startUpdates);
+    </script>
+</body>
+</html>
+```
+
+Save this as `templates/dashboard.html`, then:
+
+1. **Hard refresh the browser** with `Ctrl+F5`
+2. **Open browser console** (F12)
+3. **Click the button**
+
+You should now see in the Flask terminal:
+```
+127.0.0.1 - - [30/Nov/2025 21:XX:XX] "POST /api/control/start HTTP/1.1" 200 -
+```
+
+And in the browser console:
+```
+Training started

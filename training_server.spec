@@ -1,7 +1,5 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-import os
-
 block_cipher = None
 
 a = Analysis(
@@ -9,18 +7,18 @@ a = Analysis(
     pathex=['.'],
     binaries=[],
     datas=[
-        ('generated', 'generated'),  
+        ('generated', 'generated'),
     ],
     hiddenimports=[
         'grpc',
         'grpc._cython.cygrpc',
         'google',
         'google.protobuf',
+        'numpy.random',   # ✅ force include numpy.random
     ],
     excludes=[
-        'matplotlib',                
-        'numpy.random._pickle',
-        'scipy',                      
+        'matplotlib',     # ✅ safe to exclude
+        'scipy',          # ✅ safe if unused
     ],
     hookspath=[],
     hooksconfig={},

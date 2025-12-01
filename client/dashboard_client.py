@@ -14,11 +14,11 @@ generated_path = os.path.join(base_path, 'generated')
 sys.path.insert(0, base_path)
 sys.path.insert(0, generated_path)
 
-import training_service_pb2
-import training_service_pb2_grpc
-import health_check_pb2
-import health_check_pb2_grpc
-import training_metric_pb2
+from generated import training_service_pb2
+from generated import training_service_pb2_grpc
+from generated import health_check_pb2
+from generated import health_check_pb2_grpc
+from generated import training_metric_pb2
 
 
 class DashboardClient:

@@ -6,3 +6,8 @@
 6. ./proto_compile.bat
 7. use run.bat
 8. open localhost:5000
+
+TO BUILD:
+1. Must be in virtual environment
+2. pyinstaller training_server.spec
+3. pyinstaller dashboard_client.spec

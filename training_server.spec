@@ -6,19 +6,25 @@ a = Analysis(
     ['server/training_server.py'],
     pathex=['.'],
     binaries=[],
-    datas=[
+     datas=[
         ('generated', 'generated'),
+        ('server/datasets/mnist_3k.npz', 'datasets'),
     ],
     hiddenimports=[
         'grpc',
         'grpc._cython.cygrpc',
         'google',
         'google.protobuf',
-        'numpy.random',   # ✅ force include numpy.random
+        'numpy.random',
+        'numpy.core._multiarray_umath',
+  
     ],
     excludes=[
         'matplotlib',     # ✅ safe to exclude
-        'scipy',          # ✅ safe if unused
+        'scipy',
+        'mkl',
+        'intel_openmp',
+        'tbb',
     ],
     hookspath=[],
     hooksconfig={},

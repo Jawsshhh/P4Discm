@@ -43,6 +43,10 @@ class DashboardClient:
         self.fps = 0
         self.latency_ms = 0
         self.frame_times = []
+        
+        # FPS cap
+        self.target_fps = 60
+        self.min_frame_time = 1.0 / self.target_fps  # ~0.0167 seconds
     
     def connect(self):
         """Establish connection to server"""
@@ -148,7 +152,7 @@ class DashboardClient:
                     break
     
     def stream_images(self, callback):
-        """Stream image batches with automatic reconnection"""
+        """Stream image batches with automatic reconnection and FPS cap"""
         request = training_service_pb2.ImageBatchRequest(
             batch_size=16,
             start_step=self.last_step
@@ -162,14 +166,22 @@ class DashboardClient:
                     self.last_step = batch.step
                     callback(batch)
                     
-                    # Calculate FPS
+                    # Calculate frame time
                     frame_time = time.time() - frame_start
+                    
+                    # Cap FPS by sleeping if frame processed too quickly
+                    if frame_time < self.min_frame_time:
+                        time.sleep(self.min_frame_time - frame_time)
+                        frame_time = self.min_frame_time
+                    
+                    # Track frame times for FPS calculation
                     self.frame_times.append(frame_time)
                     if len(self.frame_times) > 60:
                         self.frame_times.pop(0)
                     
+                    # Calculate FPS (capped at target)
                     avg_frame_time = sum(self.frame_times) / len(self.frame_times)
-                    self.fps = 1.0 / avg_frame_time if avg_frame_time > 0 else 0
+                    self.fps = min(1.0 / avg_frame_time if avg_frame_time > 0 else 0, self.target_fps)
                     
                     # Send status every 30 frames
                     if len(self.frame_times) % 30 == 0:

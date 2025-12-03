@@ -252,7 +252,7 @@
                     <strong>FPS:</strong> <span id="fpsValue">0</span>
                 </div>
                 <div class="status-item">
-                    <strong>Latency:</strong> <span id="latencyValue">0ms</span>
+                    <strong>Latency:</strong> <span id="latencyValue">0.00ms</span>
                 </div>
             </div>
         </div>
@@ -407,7 +407,7 @@
                 document.getElementById('stepCount').textContent = data.current_step;
                 document.getElementById('fpsValue').textContent = data.fps.toFixed(1);
                 document.getElementById('latencyValue').textContent = 
-                    data.latency_ms.toFixed(0) + 'ms';
+                    data.latency_ms.toFixed(2) + 'ms';
                 
                 // Update button state based on training status
                 isTrainingActive = data.is_training || false;
@@ -503,7 +503,7 @@
             updateMetrics();
             setInterval(updateMetrics, 1000);
             
-            // Update images at target frame rate
+            // Update images at target frame rate (capped at 60 FPS by client)
             updateImages();
             setInterval(updateImages, 16); // ~60 FPS
         }
@@ -513,19 +513,3 @@
     </script>
 </body>
 </html>
-```
-
-Save this as `templates/dashboard.html`, then:
-
-1. **Hard refresh the browser** with `Ctrl+F5`
-2. **Open browser console** (F12)
-3. **Click the button**
-
-You should now see in the Flask terminal:
-```
-127.0.0.1 - - [30/Nov/2025 21:XX:XX] "POST /api/control/start HTTP/1.1" 200 -
-```
-
-And in the browser console:
-```
-Training started

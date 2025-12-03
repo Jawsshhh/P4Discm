@@ -20,7 +20,7 @@ venv_torch/
 # ================================
 # Build artifacts (PyInstaller)
 # ================================
-#build/
+build/
 #dist/
 #*.exe
 #*.dll

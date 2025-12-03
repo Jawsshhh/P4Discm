@@ -25,7 +25,6 @@ class DashboardClient:
     """Dashboard client with fault tolerance and reconnection"""
     
     def __init__(self, server_address=None):
-        # Use environment variable or default
         if server_address is None:
             server_address = os.getenv('GRPC_SERVER_ADDRESS', 'localhost:50051')
         
@@ -39,14 +38,12 @@ class DashboardClient:
         self.retry_count = 0
         self.max_retries = 5
         
-        # Performance tracking
         self.fps = 0
         self.latency_ms = 0
         self.frame_times = []
         
-        # FPS cap
         self.target_fps = 60
-        self.min_frame_time = 1.0 / self.target_fps  # ~0.0167 seconds
+        self.min_frame_time = 1.0 / self.target_fps  
     
     def connect(self):
         """Establish connection to server"""
@@ -55,7 +52,6 @@ class DashboardClient:
             self.training_stub = training_service_pb2_grpc.TrainingDashboardStub(self.channel)
             self.health_stub = health_check_pb2_grpc.HealthCheckStub(self.channel)
             
-            # Send initial ping
             response = self.health_stub.Ping(
                 health_check_pb2.PingRequest(
                     timestamp_ms=int(time.time() * 1000),
@@ -116,6 +112,14 @@ class DashboardClient:
             return response.alive
         except grpc.RpcError:
             return False
+        
+    def periodic_heartbeat(client):
+        while True:
+            if client.connected:
+                if not client.send_heartbeat():
+                    print("⚠️ Heartbeat failed - attempting reconnect")
+                    client.reconnect()
+            time.sleep(5)  # Every 5 seconds
     
     def send_dashboard_status(self):
         """Send dashboard performance metrics to server"""
@@ -140,7 +144,7 @@ class DashboardClient:
                     self.last_step = metrics.step
                     callback(metrics)
                     
-                    # Calculate latency
+                    #  latency
                     current_time = int(time.time() * 1000)
                     self.latency_ms = current_time - metrics.timestamp_ms
             

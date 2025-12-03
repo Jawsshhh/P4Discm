@@ -150,23 +150,22 @@ class TrainingDashboardService(training_service_pb2_grpc.TrainingDashboardServic
                     timestamp_ms=int(time.time() * 1000)
                 )
             
-            time.sleep(update_interval / 1000.0)  # Convert ms to seconds
+            time.sleep(update_interval / 1000.0)  
     
     def StreamImages(self, request, context):
         """Stream image batches with predictions"""
         batch_size = request.batch_size
         start_step = request.start_step
         
-        self.current_step = start_step
+        current_step = request.start_step  # Local to this stream
         
         while True:
-            if self.current_step < self.trainer.current_step:
-                self.current_step = self.trainer.current_step
+            if current_step < self.trainer.current_step:
+                current_step = self.trainer.current_step
                 
                 batch = self.trainer.get_current_batch()
                 labeled_images = []
                 
-                # Take up to 16 images (or batch_size)
                 for i in range(min(16, len(batch['images']))):
                     img_data = batch['images'][i]
                     
@@ -189,7 +188,7 @@ class TrainingDashboardService(training_service_pb2_grpc.TrainingDashboardServic
                     timestamp_ms=int(time.time() * 1000)
                 )
             
-            time.sleep(0.1)  # Check every 100ms
+            time.sleep(0.1)  
     
     def SendDashboardStatus(self, request, context):
         """Receive dashboard performance metrics"""

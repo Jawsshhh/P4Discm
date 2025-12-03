@@ -3,6 +3,7 @@ from flask_cors import CORS
 import threading
 import base64
 import sys
+import logging
 import os
 
 # Handle both script and PyInstaller execution
@@ -131,7 +132,6 @@ def start_client():
     client = DashboardClient()
     
     if client.connect():
-        # Start metrics stream in separate thread
         metrics_thread = threading.Thread(
             target=client.stream_metrics,
             args=(metrics_callback,),
@@ -139,7 +139,6 @@ def start_client():
         )
         metrics_thread.start()
         
-        # Start images stream in separate thread
         images_thread = threading.Thread(
             target=client.stream_images,
             args=(images_callback,),
@@ -147,9 +146,15 @@ def start_client():
         )
         images_thread.start()
 
+        heartbeat_thread = threading.Thread(
+            target=lambda: client.periodic_heartbeat(),
+            daemon=True
+        )
+        heartbeat_thread.start()
+
 if __name__ == '__main__':
-    # Start gRPC client
+    log = logging.getLogger('werkzeug')
+    log.setLevel(logging.ERROR)  # Only show errors
     start_client()
     
-    # Start Flask server
     app.run(host='0.0.0.0', port=5000, debug=False)

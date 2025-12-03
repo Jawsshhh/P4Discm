@@ -1,13 +1,6 @@
-1. Open a terminal on the project root
-2. python -m venv venv
-3. venv\Scripts\activate
-4. (If error occurs on step 2, run the ff and run step 2 again) Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
-5. pip install -r requirements.txt
-6. ./proto_compile.bat
-7. use run.bat
-8. open localhost:5000
 
-TO BUILD:
-1. Must be in virtual environment
-2. pyinstaller training_server.spec
-3. pyinstaller dashboard_client.spec
+TO RUN:
+1. .exe files are found in dist/
+2. If .exe files don't run, RUN SETUP.BAT FIRST.
+3. (If error occurs on step 2, run the following on powershell and run step 2 again) Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser
+4. Run the .exe files again

@@ -10,5 +10,6 @@
 
 TO BUILD:
 1. Must be in virtual environment
-2. pyinstaller training_server.spec
-3. pyinstaller dashboard_client.spec
+2. pip install pyinstaller
+3. pyinstaller training_server.spec
+4. pyinstaller dashboard_client.spec

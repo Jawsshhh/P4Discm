@@ -35,7 +35,7 @@ class MockTrainer:
         self.training_thread = None
 
     def load_mnist_3k(self):
-        """Load MNIST 3k subset safely (works for PyInstaller)"""
+        """Load MNIST 3k subset safely (works for PyInstaller) - 56x56 version"""
 
         # Handle PyInstaller vs normal Python
         if hasattr(sys, '_MEIPASS'):
@@ -43,25 +43,25 @@ class MockTrainer:
         else:
             base_dir = os.path.dirname(os.path.abspath(__file__))
 
+        # CHANGED: Use the upscaled 56x56 dataset
         dataset_path = os.path.join(base_dir, "datasets", "mnist_3k.npz")
 
         try:
             data = np.load(dataset_path)
             self.images = data["images"]
             self.labels = data["labels"]
-            print(f"MNIST 3k loaded: {len(self.images)} images")
+            print(f"MNIST 3k (56x56) loaded: {len(self.images)} images")
         except Exception as e:
             print(f"Failed to load MNIST dataset: {e}")
             self.images = None
             self.labels = None
-
 
     def get_mnist_image(self, idx):
         """Convert MNIST image to PNG bytes (RGB for frontend compatibility)"""
         if self.images is None:
             return self.generate_fake_image(0)
 
-        img_array = self.images[idx]  # (28, 28) grayscale
+        img_array = self.images[idx]  # (56, 56) grayscale - CHANGED from (28, 28)
         pil_img = Image.fromarray(img_array, mode="L").convert("RGB")
 
         buf = io.BytesIO()
@@ -69,13 +69,14 @@ class MockTrainer:
 
         return {
             'pixels': buf.getvalue(),
-            'width': 28,
-            'height': 28
+            'width': 56,   # CHANGED from 28
+            'height': 56   # CHANGED from 28
         }
+
 
     def generate_fake_image(self, label_idx):
         """Fallback: generate random grayscale image"""
-        img = np.random.randint(0, 255, (28, 28), dtype=np.uint8)
+        img = np.random.randint(0, 255, (56, 56), dtype=np.uint8)  # CHANGED from (28, 28)
 
         pil_img = Image.fromarray(img, mode="L").convert("RGB")
         img_bytes = io.BytesIO()
@@ -83,8 +84,8 @@ class MockTrainer:
 
         return {
             'pixels': img_bytes.getvalue(),
-            'width': 28,
-            'height': 28
+            'width': 56,   # CHANGED from 28
+            'height': 56   # CHANGED from 28
         }
 
     def training_loop(self):

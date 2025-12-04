@@ -14,7 +14,6 @@ service TrainingDashboard {
   
   rpc LiveTrainingStream(stream TrainingUpdate) returns (stream DashboardResponse);
   
-  // New control RPCs
   rpc StartTraining(TrainingControlRequest) returns (TrainingControlResponse);
   
   rpc StopTraining(TrainingControlRequest) returns (TrainingControlResponse);

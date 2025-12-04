@@ -16,7 +16,6 @@ message LabeledImage {
   float confidence = 4;        
 }
 
-// A batch of images sent during training
 message ImageBatch {
   uint32 step = 1;                      
   repeated LabeledImage images = 2;      
